@@ -6,42 +6,32 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 func main() {
 	sc := bufio.NewScanner(os.Stdin)
 	sc.Scan()
-	n, _ := strconv.Atoi(sc.Text())
-	sc.Scan()
 	fields := strings.Fields(sc.Text())
-	nums := make([]int, n)
-	for i, f := range fields {
-		nums[i], _ = strconv.Atoi(f)
+	a := make(chan int)
+	b := make(chan int)
+	go func() {
+		defer close(a)
+		for _, f := range fields {
+			n, _ := strconv.Atoi(f)
+			// TODO: send n into channel a
+			a <- n
+		}
+	}()
+	go func() {
+		defer close(b)
+		for n := range a {
+			// TODO: send the square of n into channel b
+			b <- n * n
+		}
+	}()
+	sum := 0
+	for v := range b {
+		sum += v
 	}
-
-	const workers = 4
-	partial := make([]int, workers)
-
-	var wg sync.WaitGroup
-	for w := 0; w < workers; w++ {
-		start := w * n / workers
-		end := (w + 1) * n / workers
-		wg.Add(1)
-		go func(idx, lo, hi int) {
-			defer wg.Done()
-			sum := 0
-			for i := lo; i < hi; i++ {
-				sum += nums[i]
-			}
-			partial[idx] = sum
-		}(w, start, end)
-	}
-	wg.Wait()
-
-	total := 0
-	for _, v := range partial {
-		total += v
-	}
-	fmt.Println(total)
+	fmt.Println(sum)
 }
