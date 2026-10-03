@@ -2,31 +2,46 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
+	"sync"
 )
-
-func validateAge(s string) (int, error) {
-	// implement
-	v, err := strconv.Atoi(s)
-	if err != nil {
-		return 0, fmt.Errorf("parse: %w", err)
-	}
-	if v < 0 {
-		return v, errors.New("negative")
-	}
-	return v, nil
-}
 
 func main() {
 	sc := bufio.NewScanner(os.Stdin)
 	sc.Scan()
-	age, err := validateAge(sc.Text())
-	if err != nil {
-		fmt.Printf("error: %s\n", err.Error())
-	} else {
-		fmt.Printf("age: %d\n", age)
+	n, _ := strconv.Atoi(sc.Text())
+	sc.Scan()
+	fields := strings.Fields(sc.Text())
+	nums := make([]int, n)
+	for i, f := range fields {
+		nums[i], _ = strconv.Atoi(f)
 	}
+
+	const workers = 4
+	partial := make([]int, workers)
+
+	var wg sync.WaitGroup
+	for w := 0; w < workers; w++ {
+		start := w * n / workers
+		end := (w + 1) * n / workers
+		wg.Add(1)
+		go func(idx, lo, hi int) {
+			defer wg.Done()
+			sum := 0
+			for i := lo; i < hi; i++ {
+				sum += nums[i]
+			}
+			partial[idx] = sum
+		}(w, start, end)
+	}
+	wg.Wait()
+
+	total := 0
+	for _, v := range partial {
+		total += v
+	}
+	fmt.Println(total)
 }
